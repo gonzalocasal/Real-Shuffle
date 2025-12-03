@@ -912,14 +912,17 @@ class MusicPlayerService: ObservableObject {
                 contextBeforeAlbumFilter = contextBeforeArtistFilter.isEmpty ? fullLibrary : contextBeforeArtistFilter
                 contextBeforeArtistFilter = []
             } else {
-                
                 contextBeforeAlbumFilter = currentContext.isEmpty ? fullLibrary : currentContext
             }
             
             let currentAlbum = current.album.lowercased()
+            let currentArtist = current.artist.lowercased()
             
-            /// Filter from fullLibrary to get ALL songs from album
-            var albumSongs = fullLibrary.filter { $0.album.lowercased() == currentAlbum }
+            /// Filter from fullLibrary by album AND artist to avoid mixing albums with same name
+            var albumSongs = fullLibrary.filter {
+                $0.album.lowercased() == currentAlbum &&
+                $0.artist.lowercased() == currentArtist
+            }
             
             /// Sort by disc number, then track number
             albumSongs.sort { s1, s2 in
@@ -938,6 +941,7 @@ class MusicPlayerService: ObservableObject {
             #if DEBUG
             print("💿 Album filter enabled:")
             print("   - Album: \(current.album)")
+            print("   - Artist: \(current.artist)")
             print("   - Saved context: \(contextBeforeAlbumFilter.count) songs")
             print("   - Album songs (from fullLibrary): \(albumSongs.count)")
             #endif
@@ -949,6 +953,10 @@ class MusicPlayerService: ObservableObject {
             }
             
             currentContext = albumSongs
+            
+            if (isShuffleEnabled) {
+                toggleShuffle()
+            }
         } else {
             /// Restore previous context
             currentContext = contextBeforeAlbumFilter.isEmpty ? fullLibrary : contextBeforeAlbumFilter
