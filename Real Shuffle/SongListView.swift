@@ -99,6 +99,7 @@ struct SongRowView: View {
         }
     }
 }
+
 // MARK: - Main View
 struct SongListView: View {
     @ObservedObject var player: MusicPlayerService
@@ -107,13 +108,10 @@ struct SongListView: View {
     
     @State private var searchText = ""
     @State private var debouncedSearchText = ""
-    @State private var isScrolled = false
     @State private var searchTask: Task<Void, Never>?
     @State private var sortedSongs: [RSSong] = []
     @State private var finalDisplayedSongs: [RSSong] = []
     @State private var sortTask: Task<Void, Never>?
-    
-    @FocusState private var isSearchFocused: Bool
     
     @AppStorage("songSortOption") private var sortOptionRaw: String = SongSortOption.title.rawValue
     @AppStorage("songSortAscending") private var sortAscending: Bool = true
@@ -131,7 +129,6 @@ struct SongListView: View {
         let currentAscending = sortAscending
 
         sortTask = Task.detached(priority: .userInitiated) {
-            
             if sourceSongs.isEmpty {
                 await MainActor.run {
                     self.sortedSongs = []
@@ -171,14 +168,11 @@ struct SongListView: View {
         }
     }
     
-    // MARK: - Do search
+    // MARK: - Search Logic
     private func performSearch() {
-
         if debouncedSearchText.isEmpty {
             if finalDisplayedSongs != sortedSongs {
-                withAnimation(.easeOut(duration: 0.2)) {
-                    finalDisplayedSongs = sortedSongs
-                }
+                finalDisplayedSongs = sortedSongs
             }
             return
         }
@@ -188,7 +182,6 @@ struct SongListView: View {
         
         Task.detached(priority: .userInitiated) {
             let filtered = source.filter { song in
-                
                 let titleMatch = song.title.range(
                     of: query,
                     options: [.caseInsensitive, .diacriticInsensitive]
@@ -210,7 +203,6 @@ struct SongListView: View {
         }
     }
     
-    // Debounce
     private func onSearchTextChanged() {
         searchTask?.cancel()
         searchTask = Task {
@@ -224,16 +216,22 @@ struct SongListView: View {
     
     // MARK: - Body
     var body: some View {
-        NavigationView {
-        contentSection
-
-            .safeAreaInset(edge: .top) {
-                headerSection
-            }
-
-            .navigationBarHidden(true)
+        NavigationStack {
+            contentSection
+                .navigationTitle("app.title")
+                .navigationBarTitleDisplayMode(.large)
+                .searchable(
+                    text: $searchText,
+                    placement: .navigationBarDrawer(displayMode: .automatic),
+                    prompt: "library.search.placeholder"
+                )
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        sortButton
+                    }
+                }
+                
         }
-        .navigationViewStyle(.stack)
         .onAppear {
             if sortedSongs.isEmpty && !player.results.isEmpty {
                 updateSortedSongs()
@@ -245,67 +243,6 @@ struct SongListView: View {
         .onChange(of: searchText) { onSearchTextChanged() }
         .onChange(of: debouncedSearchText) { performSearch() }
     }
-    
-    // MARK: - Header
-    private var headerSection: some View {
-    VStack(spacing: 0) {
-        VStack(spacing: 8) {
-            HStack {
-                Text("app.title")
-                    .font(isScrolled ? .headline : .largeTitle)
-                    .fontWeight(.bold)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .opacity(isScrolled ? 0 : 1)
-                    .overlay(
-                        Text("app.title")
-                            .font(.headline)
-                            .opacity(isScrolled ? 1 : 0)
-                    )
-            }
-            .padding(.horizontal, 20)
-            HStack(spacing: 12) {
-                
-            
-            HStack {
-                Image(systemName: "magnifyingglass")
-                    .foregroundColor(.secondary)
-                    .font(.system(size: 17))
-                
-                TextField("library.search.placeholder", text: $searchText)
-                    .focused($isSearchFocused)
-                    .textFieldStyle(.plain)
-                
-                if !searchText.isEmpty {
-                    Button {
-                        searchText = ""
-                        isSearchFocused = false
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.secondary)
-                    }
-                }
-                
-            }
-            .frame(height: 36)
-            .padding(.horizontal, 10)
-            .background(Color.primary.opacity(0.05))
-            .cornerRadius(10)
-            sortButton
-            }
-        }
-        .padding(.horizontal, 20)
-        .padding(.bottom, 12)
-    }
-    .frame(maxWidth: .infinity)
-    .padding(.bottom, 8)
-    // SOLUCIÓN VISUAL IPHONE:
-    .background {
-        Rectangle()
-            .fill(.ultraThinMaterial)
-            .ignoresSafeArea(edges: .top) // <- Solo el fondo sube hasta arriba
-    }
-    .shadow(color: Color.black.opacity(0.15), radius: 10, x: 0, y: 5)
-}
     
     // MARK: - Content
     private var contentSection: some View {
@@ -327,15 +264,6 @@ struct SongListView: View {
     private func songListView(songs: [RSSong]) -> some View {
         ScrollView {
             LazyVStack(spacing: 0) {
-                GeometryReader { geo in
-                    Color.clear.preference(
-                        key: ScrollOffsetKey.self,
-                        value: geo.frame(in: .named("scroll")).minY
-                    )
-                }
-                .frame(height: 0)
-        
-                
                 ForEach(songs) { song in
                     VStack(spacing: 0) {
                         SongRowView(
@@ -354,19 +282,28 @@ struct SongListView: View {
                 Spacer().frame(height: 120)
             }
         }
-        
         .scrollDismissesKeyboard(.immediately)
-        .coordinateSpace(name: "scroll")
-        .onPreferenceChange(ScrollOffsetKey.self) { value in
-            let shouldScroll = value < 0
-            if isScrolled != shouldScroll {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    isScrolled = shouldScroll
-                }
-            }
-        }
     }
     
+    // MARK: - Search Bar
+    private var searchBar: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(.secondary)
+                .font(.system(size: 14))
+            
+            TextField("library.search.placeholder", text: $searchText)
+                .textFieldStyle(.plain)
+                .font(.subheadline)
+
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(Color(.systemGray5))
+        .cornerRadius(10)
+        .frame(minWidth: 180, maxWidth: 300)
+    }
+
     // MARK: - Sort Button
     private var sortButton: some View {
         Button {
@@ -382,18 +319,11 @@ struct SongListView: View {
                 }
             }
         } label: {
-            ZStack {
-                Circle()
-                    .fill(Color.primary.opacity(0.1))
-                    .frame(width: 44, height: 44)
-                
-                HStack(spacing: 2) {
-                    Image(systemName: sortOption.icon)
-                        .font(.system(size: 16, weight: .bold))
-                    Image(systemName: sortAscending ? "arrow.up" : "arrow.down")
-                        .font(.system(size: 6, weight: .bold))
-                }
-                .foregroundColor(.primary)
+            HStack(spacing: 2) {
+                Image(systemName: sortOption.icon)
+                    .font(.system(size: 16, weight: .semibold))
+                Image(systemName: sortAscending ? "arrow.up" : "arrow.down")
+                    .font(.system(size: 10, weight: .bold))
             }
         }
     }
@@ -401,7 +331,6 @@ struct SongListView: View {
     // MARK: - Empty States
     private var loadingView: some View {
         VStack(spacing: 20) {
-            Spacer().frame(height: 60)
             ProgressView().scaleEffect(1.5)
             Text("library.status.loading")
                 .font(.headline)
@@ -410,37 +339,14 @@ struct SongListView: View {
     }
     
     private var emptyLibraryView: some View {
-        VStack(spacing: 16) {
-            Spacer().frame(height: 60)
-            Image(systemName: "music.note.list")
-                .font(.system(size: 60))
-                .foregroundColor(.secondary)
-            Text("library.status.empty.title")
-                .font(.headline)
+        ContentUnavailableView {
+            Label("library.status.empty.title", systemImage: "music.note.list")
+        } description: {
             Text("library.status.empty.message")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
         }
     }
     
     private var noResultsView: some View {
-        VStack(spacing: 16) {
-            Spacer().frame(height: 60)
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 60))
-                .foregroundColor(.secondary)
-            Text("library.status.no_results")
-                .font(.headline)
-                .foregroundColor(.secondary)
-        }
-    }
-
-}
-
-// MARK: - Preference Key
-struct ScrollOffsetKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
+        ContentUnavailableView.search(text: debouncedSearchText)
     }
 }
