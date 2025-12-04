@@ -11,8 +11,6 @@ import WidgetKit
 @MainActor
 class MusicPlayerService: ObservableObject {
     
-    private var nextCount: Int = 0
-    
     static let shared = MusicPlayerService()
 
     @Published var results: [RSSong] = []
@@ -34,7 +32,11 @@ class MusicPlayerService: ObservableObject {
     private var playerStateCancellable: AnyCancellable?
     private var queueEntryCancellable: AnyCancellable?
     private var playbackTimeCancellable: AnyCancellable?
+    private var playTaskCancellable: Task<Void, Never>?
+    private var airPlayObserverToken: NSObjectProtocol?
+    private var refillTaskCancellable: Task<Void, Never>?
     
+    private let playbackTimeUpdateThreshold: Double = 0.3
     private let refillBatchSize = 75
     private let queueThreshold = 20
     private var isLoadingMoreSongs = false
@@ -42,7 +44,6 @@ class MusicPlayerService: ObservableObject {
     private var fullLibrary: [RSSong] = []
     private var isUserChangingSong = false
     private var isSeekInProgress = false
-    private var lastSeekTime: Date? = nil
     
     private var contextBeforeArtistFilter: [RSSong] = []
     private var contextBeforeAlbumFilter: [RSSong] = []
@@ -217,7 +218,6 @@ class MusicPlayerService: ObservableObject {
         
         queueEntryCancellable = appPlayer.queue.objectWillChange
             .receive(on: DispatchQueue.main)
-            .debounce(for: .milliseconds(150), scheduler: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.syncCurrentSong()
             }
@@ -326,7 +326,6 @@ class MusicPlayerService: ObservableObject {
         let appPlayer = ApplicationMusicPlayer.shared
         appPlayer.playbackTime = time
         currentTime = time
-        lastSeekTime = Date()
         
         Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(300))
@@ -360,8 +359,8 @@ class MusicPlayerService: ObservableObject {
             }
         }
         
-        // update if change more than  0.5 segundos
-        if abs(lastPublishedTime - current) >= 0.5 {
+        /// update if change more than  0.x seconds
+        if abs(lastPublishedTime - current) >= playbackTimeUpdateThreshold {
             currentTime = current
             lastPublishedTime = current
         }
@@ -408,6 +407,7 @@ class MusicPlayerService: ObservableObject {
         
         /// CASE 2: Large context - needs refill
         isLoadingMoreSongs = true
+        refillTaskCancellable?.cancel()
         
         Task(priority: .background) {
             defer { isLoadingMoreSongs = false }
@@ -572,7 +572,6 @@ class MusicPlayerService: ObservableObject {
     /// If not playing: selects next song from context (random if shuffle, sequential if not).
     /// If playing: uses system skipToNextEntry.
     func playNext() {
-        nextCount = nextCount + 1
         if !isPlaying, let current = nowPlaying {
             let context = currentContext.isEmpty ? results : currentContext
             
@@ -682,6 +681,8 @@ class MusicPlayerService: ObservableObject {
     }
     
     func playSong(_ song: RSSong, in context: [RSSong]) {
+        /// Cancell previous operation
+        playTaskCancellable?.cancel()
         
         #if DEBUG
         print("🎵 playSong called:")
@@ -722,7 +723,7 @@ class MusicPlayerService: ObservableObject {
         currentTime = 0
         lastPublishedTime = 0
         
-        Task(priority: .userInitiated) {
+        playTaskCancellable = Task(priority: .userInitiated) {
             defer {
                 Task { @MainActor in
                     try? await Task.sleep(for: .milliseconds(600))
@@ -1039,7 +1040,7 @@ class MusicPlayerService: ObservableObject {
 
     /// Starts observing AirPlay route changes to update isAirPlayActive flag.
     private func startAirPlayObserver() {
-        NotificationCenter.default.addObserver(
+        airPlayObserverToken = NotificationCenter.default.addObserver(
             forName: AVAudioSession.routeChangeNotification,
             object: AVAudioSession.sharedInstance(),
             queue: .main
@@ -1066,6 +1067,12 @@ class MusicPlayerService: ObservableObject {
         playerStateCancellable?.cancel()
         queueEntryCancellable?.cancel()
         playbackTimeCancellable?.cancel()
+        playTaskCancellable?.cancel()
+        refillTaskCancellable?.cancel()
+    
+        if let token = airPlayObserverToken {
+            NotificationCenter.default.removeObserver(token)
+        }
     }
 }
 
