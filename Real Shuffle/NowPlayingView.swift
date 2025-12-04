@@ -101,7 +101,6 @@ struct NativeSlider: UIViewRepresentable {
     }
     
     func updateUIView(_ slider: UISlider, context: Context) {
-        // Solo actualizar si no está siendo editado
         if !context.coordinator.isEditing {
             slider.minimumValue = Float(range.lowerBound)
             slider.maximumValue = Float(range.upperBound)
@@ -318,11 +317,11 @@ struct NowPlayingContent: View {
                 title: nowPlaying?.title ?? "",
                 artist: nowPlaying?.artist ?? "",
                 animation: animation,
-                onTap: { // <--- Acción al hacer tap
-                                    let generator = UIImpactFeedbackGenerator(style: .light)
-                                    generator.impactOccurred()
-                                    showMetadataSheet = true
-                                }
+                onTap: {
+                    let generator = UIImpactFeedbackGenerator(style: .light)
+                    generator.impactOccurred()
+                    showMetadataSheet = true
+                }
             )
             Spacer()
             FilterButtonsView(
@@ -393,7 +392,7 @@ struct BackgroundView: View, Equatable {
 struct ArtworkContainerView: View, Equatable {
     let url: URL
     let size: CGFloat
-    let isPlaying: Bool // 1. Nuevo parámetro
+    let isPlaying: Bool
     var animation: Namespace.ID
     
     
@@ -485,7 +484,7 @@ struct FilterButtonsView: View {
             )
             FilterButton(
                 isEnabled: isAlbumFilterEnabled,
-                icon: "square.stack",
+                icon: "music.note.square.stack",
                 action: onAlbumFilter
             )
         }
@@ -542,8 +541,8 @@ struct MainControlsView: View, Equatable {
             }
             .keyboardShortcut(.leftArrow, modifiers: [])
             Button(action: onPlayPause) {
-                Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                    .font(.system(size: 75))
+                Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                    .font(.system(size: 60))
                     .symbolRenderingMode(.hierarchical)
                     .frame(width: 80, height: 80, alignment: .center)
             }
@@ -669,7 +668,7 @@ struct AirPlayInvisibleButton: UIViewRepresentable {
         view.activeTintColor = .clear
         view.prioritizesVideoDevices = false
         
-        // Disable iPadOS cursor interaction
+        /// Disable iPadOS cursor interaction
         if let internalButton = view.subviews.first(where: { $0 is UIButton }) as? UIButton {
             internalButton.isPointerInteractionEnabled = false
         }
@@ -695,7 +694,7 @@ struct MetadataPopupView: View {
                                 infoRow(icon: "music.note.list", label: "metadata.track", value: "\(trackNumber)")
                             }
                             
-                            infoRow(icon: "square.stack", label: "metadata.album", value: libSong.albumTitle)
+                            infoRow(icon: "music.note.square.stack", label: "metadata.album", value: libSong.albumTitle)
                             
                             if let date = libSong.releaseDate {
                                 infoRow(icon: "calendar", label: "metadata.year", value: String(Calendar.current.component(.year, from: date)))
