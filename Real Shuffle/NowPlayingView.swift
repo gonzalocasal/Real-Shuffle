@@ -50,6 +50,7 @@ struct NowPlayingWrapper: View {
         .onAppear {
             loadBackgroundImage()
         }
+        .preferredColorScheme(.dark)
     }
     
     private func loadBackgroundImage() {
