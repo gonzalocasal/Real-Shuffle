@@ -542,7 +542,7 @@ struct MainControlsView: View, Equatable {
             .keyboardShortcut(.leftArrow, modifiers: [])
             Button(action: onPlayPause) {
                 Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-                    .font(.system(size: 60))
+                    .font(.system(size: 50))
                     .symbolRenderingMode(.hierarchical)
                     .frame(width: 80, height: 80, alignment: .center)
             }
