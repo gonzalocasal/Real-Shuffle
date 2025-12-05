@@ -13,35 +13,45 @@ struct NowPlayingWrapper: View {
     @State private var currentArtworkURL: URL? = nil
     @State private var imageVersion: Int = 0
     @State private var showMetadataSheet: Bool = false
-    
+    @State private var dragOffset: CGSize = .zero
+
     var body: some View {
-        NowPlayingContent(
-            nowPlaying: player.nowPlaying,
-            isPlaying: player.isPlaying,
-            isShuffleEnabled: player.isShuffleEnabled,
-            repeatMode: player.repeatMode,
-            isArtistFilterEnabled: player.isArtistFilterEnabled,
-            isAlbumFilterEnabled: player.isAlbumFilterEnabled,
-            isAirPlayActive: player.isAirPlayActive,
-            cachedBackgroundImage: cachedBackgroundImage,
-            backgroundImageID: "\(currentArtworkURL?.absoluteString ?? "")-\(imageVersion)",
-            currentTime: player.currentTime,
-            duration: player.duration,
-            showFullPlayer: $showFullPlayer,
-            showMetadataSheet: $showMetadataSheet,
-            animation: animation,
-            onPlayPause: { player.togglePlayPause() },
-            onNext: { player.playNext() },
-            onPrevious: { player.playPrevious() },
-            onShuffle: { player.toggleShuffle() },
-            onRepeat: { player.toggleRepeat() },
-            onArtistFilter: { player.toggleArtistFilter() },
-            onAlbumFilter: { player.toggleAlbumFilter() },
-            onSeek: { player.seek(to: $0) }
-        )
+        ZStack {
+        
+            NowPlayingContent(
+                showFullPlayer: $showFullPlayer,
+                showMetadataSheet: $showMetadataSheet,
+                dragOffset: $dragOffset,
+                nowPlaying: player.nowPlaying,
+                isPlaying: player.isPlaying,
+                isShuffleEnabled: player.isShuffleEnabled,
+                repeatMode: player.repeatMode,
+                isArtistFilterEnabled: player.isArtistFilterEnabled,
+                isAlbumFilterEnabled: player.isAlbumFilterEnabled,
+                isAirPlayActive: player.isAirPlayActive,
+                cachedBackgroundImage: cachedBackgroundImage,
+                backgroundImageID: "\(currentArtworkURL?.absoluteString ?? "")-\(imageVersion)",
+                currentTime: player.currentTime,
+                duration: player.duration,
+                animation: animation,
+                onPlayPause: { player.togglePlayPause() },
+                onNext: { player.playNext() },
+                onPrevious: { player.playPrevious() },
+                onShuffle: { player.toggleShuffle() },
+                onRepeat: { player.toggleRepeat() },
+                onArtistFilter: { player.toggleArtistFilter() },
+                onAlbumFilter: { player.toggleAlbumFilter() },
+                onSeek: { player.seek(to: $0) }
+            )
+            
+            StatusBarConfigurator(
+                style: (dragOffset.height > 50 || !showFullPlayer) ? .darkContent : .lightContent
+            )
+            .frame(width: 0, height: 0)
+        }
         .sheet(isPresented: $showMetadataSheet) {
             MetadataPopupView(song: player.nowPlaying, isPresented: $showMetadataSheet)
-                .presentationDetents([.medium, .fraction(0.4)]) // Altura media
+                .presentationDetents([.medium, .fraction(0.4)])
                 .presentationDragIndicator(.hidden)
         }
         .onChange(of: player.nowPlaying?.musicItemID) {
@@ -50,7 +60,6 @@ struct NowPlayingWrapper: View {
         .onAppear {
             loadBackgroundImage()
         }
-        .preferredColorScheme(.dark)
     }
     
     private func loadBackgroundImage() {
@@ -200,6 +209,9 @@ struct PlaybackSliderView: View {
 
 // MARK: - Content
 struct NowPlayingContent: View {
+    @Binding var showFullPlayer: Bool
+    @Binding var showMetadataSheet: Bool
+    @Binding var dragOffset: CGSize
     let nowPlaying: RSSong?
     let isPlaying: Bool
     let isShuffleEnabled: Bool
@@ -211,10 +223,7 @@ struct NowPlayingContent: View {
     let backgroundImageID: String
     let currentTime: Double
     let duration: Double
-    @Binding var showFullPlayer: Bool
-    @Binding var showMetadataSheet: Bool
     var animation: Namespace.ID
-    
     let onPlayPause: () -> Void
     let onNext: () -> Void
     let onPrevious: () -> Void
@@ -223,8 +232,6 @@ struct NowPlayingContent: View {
     let onArtistFilter: () -> Void
     let onAlbumFilter: () -> Void
     let onSeek: (Double) -> Void
-    
-    @State private var dragOffset: CGSize = .zero
     
     var body: some View {
         GeometryReader { geometry in
@@ -750,6 +757,46 @@ struct MetadataPopupView: View {
                 
                 Text(val).foregroundStyle(.primary).multilineTextAlignment(.trailing)
             }
+        }
+    }
+}
+
+
+struct StatusBarConfigurator: UIViewControllerRepresentable {
+    var style: UIStatusBarStyle
+
+    func makeUIViewController(context: Context) -> InternalViewController {
+        let vc = InternalViewController()
+        vc.statusBarStyle = style
+        return vc
+    }
+
+    func updateUIViewController(_ uiViewController: InternalViewController, context: Context) {
+        // Si el estilo cambia, actualizamos el controlador y forzamos el refresco
+        if uiViewController.statusBarStyle != style {
+            uiViewController.statusBarStyle = style
+            
+            // Forzamos la actualización de la barra de estado con animación
+            UIView.animate(withDuration: 0.25) {
+                uiViewController.setNeedsStatusBarAppearanceUpdate()
+            }
+        }
+    }
+
+    // Controlador interno que sobrescribe la propiedad nativa
+    class InternalViewController: UIViewController {
+        var statusBarStyle: UIStatusBarStyle = .default
+
+        override var preferredStatusBarStyle: UIStatusBarStyle {
+            return statusBarStyle
+        }
+        
+        // Esto es clave: como este VC suele ser hijo de un HostingController,
+        // a veces hay que asegurarnos que la vista es transparente y no bloquea toques.
+        override func viewDidLoad() {
+            super.viewDidLoad()
+            view.backgroundColor = .clear
+            view.isUserInteractionEnabled = false
         }
     }
 }
