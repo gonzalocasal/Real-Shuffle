@@ -506,10 +506,20 @@ class MusicPlayerService: ObservableObject {
     /// Refreshes the shuffled context, keeping the current song at position 0
     /// and shuffling all other songs after it.
     private func refreshShuffledContext(keeping currentSong: RSSong) {
-        let others = currentContext.filter { $0.id != currentSong.id }
-        shuffledContext = [currentSong] + others.shuffled()
+        var others = currentContext.filter { $0.id != currentSong.id }
+        fisherYatesShuffle(&others)  // ← Algoritmo explícito
+        shuffledContext = [currentSong] + others
     }
     
+    /// Fisher-Yates shuffle algorithm for true randomness.
+    private func fisherYatesShuffle<T>(_ array: inout [T]) {
+        guard array.count > 1 else { return }
+        
+        for i in stride(from: array.count - 1, through: 1, by: -1) {
+            let randomIndex = Int.random(in: 0...i)
+            array.swapAt(i, randomIndex)
+        }
+    }
 
     // MARK: - Controls
     
