@@ -1,31 +1,48 @@
-POLÍTICA DE PRIVACIDAD – REAL SHUFFLE
-Última actualización: 1 de diciembre de 2025
-Descripción de la Aplicación
+# POLÍTICA DE PRIVACIDAD – REAL SHUFFLE
+
+**Última actualización:** 1 de diciembre de 2025
+
+## Descripción de la Aplicación
+
 Real Shuffle ("la App") es una aplicación de terceros que funciona como cliente para Apple Music y utiliza la API de Apple (MusicKit) para reproducir contenido de tu biblioteca musical.
-Información que Recopilamos
+
+## Información que Recopilamos
+
 Real Shuffle no recopila, almacena ni vende información personal identificable fuera de tu dispositivo.
+
 La App puede acceder a:
 
-Tu biblioteca de Apple Music y playlists
-Información básica de las canciones (título, artista, álbum, artwork), exclusivamente para poder mostrar y reproducir tu música dentro de la App
+- Tu biblioteca de Apple Music y playlists
+- Información básica de las canciones (título, artista, álbum, artwork), exclusivamente para poder mostrar y reproducir tu música dentro de la App
 
 Esta información se obtiene a través de los servicios de Apple y se procesa localmente en tu dispositivo.
-Uso de la Información
+
+## Uso de la Información
+
 La información a la que accede la App se utiliza únicamente para:
 
-Mostrar tu biblioteca musical y playlists
-Reproducir canciones usando Apple Music
-Generar órdenes de reproducción aleatorias independientes del algoritmo de Apple Music
+- Mostrar tu biblioteca musical y playlists
+- Reproducir canciones usando Apple Music
+- Generar órdenes de reproducción aleatorias independientes del algoritmo de Apple Music
 
 Real Shuffle no envía tu biblioteca ni tus datos de reproducción a servidores propios ni de terceros.
-Servicios de Terceros
+
+## Servicios de Terceros
+
 Real Shuffle utiliza los servicios de Apple (Apple Music / MusicKit). El uso de la App también está sujeto a las políticas de privacidad y términos de Apple. Te recomendamos revisar la política de privacidad de Apple para más información.
-Almacenamiento de Datos
+
+## Almacenamiento de Datos
+
 La App no mantiene servidores propios para almacenar tu información personal. Cualquier dato relacionado con tu cuenta de Apple Music es gestionado y almacenado por Apple.
-Menores de Edad
+
+## Menores de Edad
+
 Real Shuffle no está dirigida específicamente a menores de 13 años. No recopilamos de forma consciente información personal de menores.
-Cambios en esta Política
+
+## Cambios en esta Política
+
 Podemos actualizar esta Política de Privacidad ocasionalmente. Cuando lo hagamos, actualizaremos la fecha de "Última actualización" al comienzo de este documento. El uso continuo de la App después de cualquier cambio implica la aceptación de la nueva política.
-Contacto
-Si tenés preguntas sobre esta Política de Privacidad, podés contactarme en:
-gonzalocasal@gmail.com
+
+## Contacto
+
+Si tenés preguntas sobre esta Política de Privacidad, podés contactarme en: gonzalocasal@gmail.com
