@@ -5,6 +5,8 @@ import AVKit
 
 // MARK: - Wrapper isolate currentTime updates
 struct NowPlayingWrapper: View {
+    @Environment(\.colorScheme) var colorScheme
+    
     @ObservedObject var player: MusicPlayerService
     @Binding var showFullPlayer: Bool
     var animation: Namespace.ID
@@ -45,7 +47,7 @@ struct NowPlayingWrapper: View {
             )
             
             StatusBarConfigurator(
-                style: (dragOffset.height > 50 || !showFullPlayer) ? .darkContent : .lightContent
+                style: colorScheme == .dark ? .lightContent : ((dragOffset.height > 50 || !showFullPlayer) ? .darkContent : .lightContent)
             )
             .frame(width: 0, height: 0)
         }
