@@ -237,7 +237,7 @@ class MusicPlayerService: ObservableObject {
             return
         }
         
-        // Search O(1)
+        /// Search O(1)
         var foundIndex: Int? = songIndexByMusicItemID[s.id]
         
         if foundIndex == nil {
@@ -264,7 +264,7 @@ class MusicPlayerService: ObservableObject {
             )
         }
         
-        // update dauration
+        /// update dauration
         if let staticDuration = finalSong.librarySong?.duration {
             if abs(duration - staticDuration) > 0.1 {
                 duration = staticDuration
@@ -583,20 +583,17 @@ class MusicPlayerService: ObservableObject {
     /// If playing: uses system skipToNextEntry.
     func playNext() {
         if !isPlaying, let current = nowPlaying {
-            let context = currentContext.isEmpty ? results : currentContext
+            /// if  shuffle use shuffledContext
+            let navigationList = isShuffleEnabled ? shuffledContext : (currentContext.isEmpty ? results : currentContext)
             
-            let nextSong: RSSong
+            /// search current index
+            guard let currentIndex = navigationList.firstIndex(where: { $0.id == current.id }) else { return }
             
-            if isShuffleEnabled {
-                let otherSongs = context.filter { $0.id != current.id }
-                guard let randomSong = otherSongs.randomElement() else { return }
-                nextSong = randomSong
-            } else {
-                guard let currentIndex = context.firstIndex(where: { $0.id == current.id }) else { return }
-                let nextIndex = (currentIndex + 1) % context.count
-                nextSong = context[nextIndex]
-            }
+            /// calculate next index (circular)
+            let nextIndex = (currentIndex + 1) % navigationList.count
+            let nextSong = navigationList[nextIndex]
             
+            /// update state
             nowPlaying = nextSong
             lastPublishedSongID = nextSong.id
             currentTime = 0
@@ -607,7 +604,7 @@ class MusicPlayerService: ObservableObject {
             
             if let librarySong = nextSong.librarySong {
                 Task {
-                    let musicKitSongs = buildQueue(for: librarySong, song: nextSong, context: context)
+                    let musicKitSongs = buildQueue(for: librarySong, song: nextSong, context: navigationList)
                     guard !musicKitSongs.isEmpty else { return }
                     ApplicationMusicPlayer.shared.queue = ApplicationMusicPlayer.Queue(for: musicKitSongs, startingAt: librarySong)
                     restoreRepeatMode()
@@ -636,45 +633,40 @@ class MusicPlayerService: ObservableObject {
     func playPrevious() {
         
         let currentPlayerTime = ApplicationMusicPlayer.shared.playbackTime
-        
-        // If more than 3 seconds in, restart current song
-        if currentPlayerTime > 3.0 {
-            seek(to: 0)
-            return
-        }
-        
-        if !isPlaying, let current = nowPlaying {
-            let context = currentContext.isEmpty ? results : currentContext
             
-            let prevSong: RSSong
-            
-            if isShuffleEnabled {
-                let otherSongs = context.filter { $0.id != current.id }
-                guard let randomSong = otherSongs.randomElement() else { return }
-                prevSong = randomSong
-            } else {
-                guard let currentIndex = context.firstIndex(where: { $0.id == current.id }) else { return }
-                let prevIndex = currentIndex > 0 ? currentIndex - 1 : context.count - 1
-                prevSong = context[prevIndex]
+            if currentPlayerTime > 3.0 {
+                seek(to: 0)
+                return
             }
             
-            nowPlaying = prevSong
-            lastPublishedSongID = prevSong.id
-            currentTime = 0
-            lastPublishedTime = 0
-            if let duration = prevSong.librarySong?.duration {
-                self.duration = duration
-            }
-            
-            if let librarySong = prevSong.librarySong {
-                Task {
-                    let musicKitSongs = buildQueue(for: librarySong, song: prevSong, context: context)
-                    guard !musicKitSongs.isEmpty else { return }
-                    ApplicationMusicPlayer.shared.queue = ApplicationMusicPlayer.Queue(for: musicKitSongs, startingAt: librarySong)
-                    restoreRepeatMode()
+            if !isPlaying, let current = nowPlaying {
+                /// if  shuffle use shuffledContext
+                let navigationList = isShuffleEnabled ? shuffledContext : (currentContext.isEmpty ? results : currentContext)
+                
+                /// search current index
+                guard let currentIndex = navigationList.firstIndex(where: { $0.id == current.id }) else { return }
+                
+                /// calculate previous index (circular)
+                let prevIndex = currentIndex > 0 ? currentIndex - 1 : navigationList.count - 1
+                let prevSong = navigationList[prevIndex]
+                
+                nowPlaying = prevSong
+                lastPublishedSongID = prevSong.id
+                currentTime = 0
+                lastPublishedTime = 0
+                if let duration = prevSong.librarySong?.duration {
+                    self.duration = duration
                 }
-            }
-            return
+                
+                if let librarySong = prevSong.librarySong {
+                    Task {
+                        let musicKitSongs = buildQueue(for: librarySong, song: prevSong, context: navigationList)
+                        guard !musicKitSongs.isEmpty else { return }
+                        ApplicationMusicPlayer.shared.queue = ApplicationMusicPlayer.Queue(for: musicKitSongs, startingAt: librarySong)
+                        restoreRepeatMode()
+                    }
+                }
+                return
         }
         
         Task {
